@@ -9,9 +9,14 @@ export function textFromMessage(message: ResultMessage): string | undefined {
 }
 export function parseResult<T>(message: ResultMessage, schema: JsonSchema): StructuredOutputResult<T> {
   if (message.errorMessage || message.stopReason === "error") throw new Error(message.errorMessage ?? "Provider returned an error");
+  if (message.stopReason === "toolUse" || hasToolCall(message)) throw new Error("Assistant turn requested a tool and is not a final structured output");
   if (message.stopReason === "aborted" || message.stopReason === "length" || message.stopReason === "incomplete") throw new Error(`Structured output did not finish: ${message.stopReason}`);
   const text = textFromMessage(message); if (text === undefined) throw new Error("Assistant turn did not contain final text");
   let value: unknown; try { value = JSON.parse(text); } catch { throw new Error("Assistant text is not valid JSON"); }
   const validation = validateValue(value, schema); if (!validation.valid) throw new Error(`Structured output failed schema validation: ${validation.errors.map(error => `${error.instancePath || "#"} ${error.message}`).join(", ")}`);
   return { value: value as T, text, schema, model: message.model };
+}
+
+function hasToolCall(message: ResultMessage): boolean {
+  return Array.isArray(message.content) && message.content.some(part => part && typeof part === "object" && (part as { type?: unknown }).type === "toolCall");
 }
