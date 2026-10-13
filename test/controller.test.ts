@@ -21,4 +21,14 @@ describe("strict controller", () => {
     expect(controller.result()).toBeUndefined();
     expect(controller.error()?.message).toMatch(/valid JSON/);
   });
+  it("keeps the request schema isolated from caller mutations", async () => {
+    const input = { type: "object", properties: { answer: { type: "string" } }, required: ["answer"], additionalProperties: false };
+    const session: any = { agent: {} };
+    const controller = attachStructuredOutput(session, { schema: input, name: "answer" });
+    input.properties.answer.type = "number";
+    const exposed = controller.request()!;
+    exposed.schema.properties!.answer!.type = "number";
+    const payload = await session.agent.onPayload({}, { api: "openai-completions" });
+    expect(payload.response_format.json_schema.schema.properties.answer.type).toBe("string");
+  });
 });
