@@ -1,0 +1,36 @@
+name: Provider smoke
+
+on:
+  workflow_dispatch:
+    inputs:
+      provider:
+        description: "Pi provider id"
+        required: true
+      api:
+        description: "Pi model.api value"
+        required: true
+        default: "openai-completions"
+      base_url:
+        description: "OpenAI-compatible or provider base URL"
+        required: true
+      model:
+        description: "Provider model id"
+        required: true
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.19.x
+          cache: npm
+      - run: npm ci
+      - run: npm run test:e2e:provider
+        env:
+          E2E_API_KEY: ${{ secrets.E2E_API_KEY }}
+          E2E_PROVIDER: ${{ inputs.provider }}
+          E2E_API: ${{ inputs.api }}
+          E2E_BASE_URL: ${{ inputs.base_url }}
+          E2E_MODEL: ${{ inputs.model }}
