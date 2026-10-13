@@ -9,4 +9,16 @@ describe("strict controller", () => {
     expect(controller.result()?.value).toEqual({ answer: "ok" }); controller.detach(); expect(session.agent.onPayload).toBeUndefined();
   });
   it("rejects unknown providers before a request can be sent", async () => { const session: any = { agent: {} }; attachStructuredOutput(session, { schema }); await expect(session.agent.onPayload({}, { api: "unknown" })).rejects.toThrow(/No structured output adapter/); });
+  it("clears the previous result when a later turn fails", () => {
+    let listener: ((event: any) => void) | undefined;
+    const session: any = { agent: {}, subscribe(fn: any) { listener = fn; return () => { listener = undefined; }; } };
+    const controller = attachStructuredOutput(session, { schema });
+    listener?.({ type: "turn_start" });
+    listener?.({ type: "turn_end", message: { role: "assistant", content: [{ type: "text", text: '{"answer":"previous"}' }], stopReason: "stop" } });
+    expect(controller.result()?.value).toEqual({ answer: "previous" });
+    listener?.({ type: "turn_start" });
+    listener?.({ type: "turn_end", message: { role: "assistant", content: [{ type: "text", text: "invalid JSON" }], stopReason: "stop" } });
+    expect(controller.result()).toBeUndefined();
+    expect(controller.error()?.message).toMatch(/valid JSON/);
+  });
 });
