@@ -3,6 +3,14 @@
   "version": "0.1.0",
   "description": "Native structured output for Pi agent sessions",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/nil4u/pi-structured-output.git"
+  },
+  "bugs": {
+    "url": "https://github.com/nil4u/pi-structured-output/issues"
+  },
+  "homepage": "https://github.com/nil4u/pi-structured-output#readme",
   "type": "module",
   "engines": { "node": ">=22.19.0" },
   "exports": {
