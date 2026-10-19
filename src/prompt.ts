@@ -15,17 +15,27 @@ export function applyPromptOutput(payload: unknown, model: PromptModel, request:
   }
   if (model.api === "openai-responses" || model.api === "openai-codex-responses") {
     if (Array.isArray(next.input)) {
-      next.input = [{ role: "system", content: [{ type: "input_text", text: instruction }] }, ...next.input];
+      next.input = insertAfterLastSystem(next.input, { role: "system", content: [{ type: "input_text", text: instruction }] });
       return next;
     }
     next.instructions = appendText(next.instructions, instruction);
     return next;
   }
   if (Array.isArray(next.messages)) {
-    next.messages = [{ role: "system", content: instruction }, ...next.messages];
+    next.messages = insertAfterLastSystem(next.messages, { role: "system", content: instruction });
     return next;
   }
   throw new StructuredOutputError("prompt_payload_unsupported", `Cannot inject structured output instructions into API ${model.api ?? "unknown"}`);
+}
+
+function insertAfterLastSystem(items: unknown[], instruction: unknown): unknown[] {
+  let lastSystem = -1;
+  for (let index = 0; index < items.length; index += 1) {
+    const item = items[index];
+    if (item && typeof item === "object" && ((item as { role?: unknown }).role === "system" || (item as { role?: unknown }).role === "developer")) lastSystem = index;
+  }
+  const insertAt = lastSystem === -1 ? 0 : lastSystem + 1;
+  return [...items.slice(0, insertAt), instruction, ...items.slice(insertAt)];
 }
 
 function appendText(existing: unknown, instruction: string): string {
