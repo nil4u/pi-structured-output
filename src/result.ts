@@ -13,16 +13,51 @@ export function parseResult<T>(message: ResultMessage, schema: JsonSchema): Stru
   if (message.stopReason === "toolUse" || hasToolCall(message)) throw new Error("Assistant turn requested a tool and is not a final structured output");
   if (message.stopReason === "aborted" || message.stopReason === "length" || message.stopReason === "incomplete") throw new Error(`Structured output did not finish: ${message.stopReason}`);
   const text = textFromMessage(message); if (text === undefined) throw new Error("Assistant turn did not contain final text");
-  let value: unknown;
-  try {
-    value = JSON.parse(text);
-  } catch (error) {
-    let repaired: string;
-    try { repaired = jsonrepair(text); } catch { throw new Error("Assistant text is not valid JSON and repair failed"); }
-    try { value = JSON.parse(repaired); } catch { throw new Error("Assistant text is not valid JSON after repair"); }
+  let firstValidationError: string | undefined;
+  for (const candidate of jsonCandidates(text)) {
+    const parsed = parseCandidate(candidate);
+    if (!parsed) continue;
+    const validation = validateValue(parsed.value, schema);
+    if (validation.valid) return { value: parsed.value as T, text: parsed.text, schema, model: message.model };
+    firstValidationError ??= formatValidationError(validation.errors);
   }
-  const validation = validateValue(value, schema); if (!validation.valid) throw new Error(`Structured output failed schema validation: ${validation.errors.map(error => `${error.instancePath || "#"} ${error.message}`).join(", ")}`);
-  return { value: value as T, text, schema, model: message.model };
+  if (firstValidationError) throw new Error(`Structured output failed schema validation: ${firstValidationError}`);
+  throw new Error("Assistant text is not valid JSON after repair");
+}
+
+function jsonCandidates(text: string): string[] {
+  const candidates = [text.trim()];
+  for (const match of text.matchAll(/```(?:json)?\s*([\s\S]*?)\s*```/gi)) candidates.push(match[1]!);
+  for (let start = 0; start < text.length; start += 1) {
+    if (text[start] !== "{" && text[start] !== "[") continue;
+    const end = balancedJsonEnd(text, start);
+    if (end !== -1) candidates.push(text.slice(start, end + 1));
+  }
+  return [...new Set(candidates.filter(Boolean))];
+}
+
+function balancedJsonEnd(text: string, start: number): number {
+  const stack: string[] = []; let quoted = false; let escaped = false;
+  for (let index = start; index < text.length; index += 1) {
+    const char = text[index]!;
+    if (quoted) { if (escaped) escaped = false; else if (char === "\\") escaped = true; else if (char === '"') quoted = false; continue; }
+    if (char === '"') { quoted = true; continue; }
+    if (char === "{" || char === "[") stack.push(char === "{" ? "}" : "]");
+    else if (char === "}" || char === "]") { if (stack.pop() !== char) return -1; if (stack.length === 0) return index; }
+  }
+  return -1;
+}
+
+function parseCandidate(candidate: string): { value: unknown; text: string } | undefined {
+  try { return { value: JSON.parse(candidate), text: candidate }; } catch { /* repair below */ }
+  try {
+    const repaired = jsonrepair(candidate);
+    return { value: JSON.parse(repaired), text: repaired };
+  } catch { return undefined; }
+}
+
+function formatValidationError(errors: { instancePath: string; message?: string }[]): string {
+  return errors.map(error => `${error.instancePath || "#"} ${error.message}`).join(", ");
 }
 
 function hasToolCall(message: ResultMessage): boolean {

@@ -14,4 +14,8 @@ describe("results", () => {
     const malformed = message("{'value': 'fixed',}");
     expect(parseResult(malformed, schema).value).toEqual({ value: "fixed" });
   });
+  it("extracts and repairs JSON surrounded by prose", () => {
+    const mixed = message('报告已经生成。\n\n```json\n{"value":"from-json",}\n```');
+    expect(parseResult(mixed, schema).value).toEqual({ value: "from-json" });
+  });
 });

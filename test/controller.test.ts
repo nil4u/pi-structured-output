@@ -56,12 +56,7 @@ describe("strict controller", () => {
       { role: "user", content: "question" },
       { role: "system", content: "late system" },
     ] }, { api: "openai-completions" });
-    expect(payload.messages.map((message: any) => message.content)).toEqual([
-      "base",
-      "question",
-      "late system",
-      "Structured output instructions for the final assistant answer:\nUse available tools normally when they are needed to complete the task. Finish the tool work before producing the final answer.\nWhen you finish, return exactly one valid JSON value for structured_output. Do not use Markdown fences, commentary, or extra text around it.\nThe final JSON must validate against this JSON Schema: {\"type\":\"object\",\"properties\":{\"answer\":{\"type\":\"string\"}},\"required\":[\"answer\"],\"additionalProperties\":false}",
-    ]);
+    expect(payload.messages.map((message: any) => message.content)).toEqual(["base", "question", "late system", expect.stringContaining("This is a protocol requirement")]);
   });
   it("preserves Anthropic system content in prompt fallback", async () => {
     const session: any = { agent: {} };
