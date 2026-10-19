@@ -19,7 +19,7 @@ describe("strict controller", () => {
     listener?.({ type: "turn_start" });
     listener?.({ type: "turn_end", message: { role: "assistant", content: [{ type: "text", text: "invalid JSON" }], stopReason: "stop" } });
     expect(controller.result()).toBeUndefined();
-    expect(controller.error()?.message).toMatch(/valid JSON/);
+    expect(controller.error()?.message).toMatch(/schema validation/);
   });
   it("keeps the request schema isolated from caller mutations", async () => {
     const input = { type: "object", properties: { answer: { type: "string" } }, required: ["answer"], additionalProperties: false };
@@ -49,10 +49,10 @@ describe("strict controller", () => {
     expect(payload.system[0].text).toBe("base instructions");
     expect(payload.system[1].text).toContain("additionalProperties");
   });
-  it("uses repair parsing when explicitly enabled", () => {
+  it("repairs recoverable malformed JSON by default", () => {
     let listener: ((event: any) => void) | undefined;
     const session: any = { agent: {}, subscribe(fn: any) { listener = fn; return () => { listener = undefined; }; } };
-    const controller = attachStructuredOutput(session, { schema }, { mode: "prompt", parsing: "repair" });
+    const controller = attachStructuredOutput(session, { schema }, { mode: "prompt" });
     listener?.({ type: "turn_start" });
     listener?.({ type: "turn_end", message: { role: "assistant", content: [{ type: "text", text: "{'answer': 'repaired',}" }], stopReason: "stop" } });
     expect(controller.result()?.value).toEqual({ answer: "repaired" });

@@ -8,4 +8,3 @@ export type { NativeOutputAdapter, PiModel, StructuredOutputRequest } from "./ad
 export type { StructuredOutputController } from "./controller.js";
 export type { StructuredOutputMode } from "./controller.js";
 export type { StructuredOutputResult } from "./result.js";
-export type { ResultParsing } from "./result.js";
