@@ -1,6 +1,6 @@
 # pi-structured-output
 
-给使用 Pi SDK 编写 agent 的开发者提供原生 structured output。它把 JSON Schema 注入 provider 请求，并在 `turn_end` 对最终 assistant 文本做本地校验；Pi 的工具调用、thinking 和流式执行仍由 Pi 管理。
+给使用 Pi SDK 编写 agent 的开发者提供 structured output。默认使用 prompt fallback，把 JSON Schema 加入 system prompt，并在 `turn_end` 对最终 assistant 文本做本地校验；Pi 的工具调用、thinking 和流式执行仍由 Pi 管理。
 
 ## 怎么用
 
@@ -46,7 +46,7 @@ try {
 }
 ```
 
-`attachStructuredOutput()` 是严格入口：它包住 `session.agent.onPayload`，在 provider 请求发出前验证原生格式。支持的 `model.api` 和请求字段是：
+`attachStructuredOutput()` 默认使用 prompt fallback。需要 provider 原生格式时显式传 `{ mode: "native" }`；native 模式会包住 `session.agent.onPayload`，在请求发出前验证原生格式。支持的 `model.api` 和请求字段是：
 
 | `model.api` | 原生字段 |
 | --- | --- |
@@ -64,7 +64,7 @@ provider 不支持原生 structured output 时，可以显式使用 prompt fallb
 const output = attachStructuredOutput(session, { schema }, { mode: "prompt" });
 ```
 
-这个模式不发送 `response_format` 或 `text.format`，而是把 schema 和最终 JSON 规则加入 system prompt；工具调用仍由 Pi loop 处理，最终文本仍由本地 schema 校验。它是兼容性 fallback，不提供 provider 原生约束保证。
+这个模式不发送 `response_format` 或 `text.format`，而是把 schema 和最终 JSON 规则加入 system prompt；工具调用仍由 Pi loop 处理，最终文本仍由本地 schema 校验。它是默认兼容路径，不提供 provider 原生约束保证。需要严格 native 模式时使用 `{ mode: "native" }`。
 
 模型返回缺逗号、单引号或截断 JSON 时，库会自动尝试使用 `jsonrepair` 修复；修复后仍会执行 `JSON.parse` 和原始 JSON Schema 校验。语义错误、缺失字段和错误类型不会被修复成成功。
 
