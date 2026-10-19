@@ -52,7 +52,7 @@ function promptInstruction(request: PromptOutputRequest): string {
   return [
     "Structured output instructions:",
     "Use available tools normally when they are needed to complete the task.",
-    `When responding, return one valid JSON value for ${name}. Do not add a report, progress update, Markdown fence, commentary, or explanation around the JSON. Put human-readable text inside the JSON fields required by the schema.`,
+    `When responding, include one complete valid JSON value for ${name}. You may include a brief explanation, report, or Markdown around it, but include only one JSON value that matches the schema.`,
     `The final JSON must validate against this JSON Schema: ${JSON.stringify(request.schema)}`,
   ].join("\n");
 }
