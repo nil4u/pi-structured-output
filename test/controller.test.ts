@@ -49,4 +49,12 @@ describe("strict controller", () => {
     expect(payload.system[0].text).toBe("base instructions");
     expect(payload.system[1].text).toContain("additionalProperties");
   });
+  it("uses repair parsing when explicitly enabled", () => {
+    let listener: ((event: any) => void) | undefined;
+    const session: any = { agent: {}, subscribe(fn: any) { listener = fn; return () => { listener = undefined; }; } };
+    const controller = attachStructuredOutput(session, { schema }, { mode: "prompt", parsing: "repair" });
+    listener?.({ type: "turn_start" });
+    listener?.({ type: "turn_end", message: { role: "assistant", content: [{ type: "text", text: "{'answer': 'repaired',}" }], stopReason: "stop" } });
+    expect(controller.result()?.value).toEqual({ answer: "repaired" });
+  });
 });

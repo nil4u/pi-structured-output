@@ -10,4 +10,9 @@ describe("results", () => {
     expect(() => parseResult(toolTurn, schema)).toThrow(/requested a tool/);
     expect(() => parseResult({ ...toolTurn, stopReason: "stop" }, schema)).toThrow(/requested a tool/);
   });
+  it("repairs malformed JSON only when requested", () => {
+    const malformed = message("{'value': 'fixed',}");
+    expect(() => parseResult(malformed, schema)).toThrow(/valid JSON/);
+    expect(parseResult(malformed, schema, "repair").value).toEqual({ value: "fixed" });
+  });
 });
