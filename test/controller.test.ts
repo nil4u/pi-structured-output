@@ -31,4 +31,22 @@ describe("strict controller", () => {
     const payload = await session.agent.onPayload({}, { api: "openai-completions" });
     expect(payload.response_format.json_schema.schema.properties.answer.type).toBe("string");
   });
+  it("supports prompt fallback without native response format", async () => {
+    const session: any = { agent: {} };
+    const controller = attachStructuredOutput(session, { schema, name: "answer" }, { mode: "prompt" });
+    const payload = await session.agent.onPayload({ messages: [{ role: "user", content: "hello" }], tools: ["lookup"] }, { api: "openai-completions" });
+    expect(payload.response_format).toBeUndefined();
+    expect(payload.tools).toEqual(["lookup"]);
+    expect(payload.messages[0].role).toBe("system");
+    expect(payload.messages[0].content).toContain("additionalProperties");
+    controller.detach();
+  });
+  it("preserves Anthropic system content in prompt fallback", async () => {
+    const session: any = { agent: {} };
+    attachStructuredOutput(session, { schema }, { mode: "prompt" });
+    const payload = await session.agent.onPayload({ system: [{ type: "text", text: "base instructions" }], messages: [] }, { api: "anthropic-messages" });
+    expect(payload.system).toHaveLength(2);
+    expect(payload.system[0].text).toBe("base instructions");
+    expect(payload.system[1].text).toContain("additionalProperties");
+  });
 });

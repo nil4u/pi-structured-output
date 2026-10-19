@@ -58,6 +58,14 @@ try {
 
 schema 会在 controller 内部复制，调用方后续修改传入对象不会改变 provider 请求或本地校验。通用 JSON Schema 校验通过后，adapter 还会按 provider 能力做发送前检查；例如 OpenAI strict structured outputs 要求根 schema 是 object、对象使用 `additionalProperties: false`，并把所有属性列入 `required`。
 
+provider 不支持原生 structured output 时，可以显式使用 prompt fallback：
+
+```ts
+const output = attachStructuredOutput(session, { schema }, { mode: "prompt" });
+```
+
+这个模式不发送 `response_format` 或 `text.format`，而是把 schema 和最终 JSON 规则加入 system prompt；工具调用仍由 Pi loop 处理，最终文本仍由本地 schema 校验。它是兼容性 fallback，不提供 provider 原生约束保证。
+
 ## 怎么开发和迭代
 
 代码按职责分在 `src/schema.ts`、`src/adapters.ts`、`src/controller.ts` 和 `src/result.ts`。新增 provider 时实现 `NativeOutputAdapter`，同时补请求字段保留、幂等性、payload guard 和结果解析测试。原始 schema 始终用于本地校验，不能用 prompt 约束替代它。
