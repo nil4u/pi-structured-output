@@ -50,10 +50,9 @@ function appendAnthropicSystem(existing: unknown, instruction: string): unknown 
 function promptInstruction(request: PromptOutputRequest): string {
   const name = normalizeName(request.name);
   return [
-    "Structured output instructions for the final assistant answer:",
-    "Use available tools normally when they are needed to complete the task. Finish the tool work before producing the final answer.",
-    "This is a protocol requirement, not a formatting preference.",
-    `When you finish, your entire final text message must be exactly one valid JSON value for ${name}. Do not write a report, progress update, Markdown fence, commentary, or explanation before or after it. Put any human-readable text inside the JSON fields required by the schema.`,
+    "Structured output instructions:",
+    "Use available tools normally when they are needed to complete the task.",
+    `When responding, return one valid JSON value for ${name}. Do not add a report, progress update, Markdown fence, commentary, or explanation around the JSON. Put human-readable text inside the JSON fields required by the schema.`,
     `The final JSON must validate against this JSON Schema: ${JSON.stringify(request.schema)}`,
   ].join("\n");
 }

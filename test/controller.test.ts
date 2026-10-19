@@ -56,7 +56,7 @@ describe("strict controller", () => {
       { role: "user", content: "question" },
       { role: "system", content: "late system" },
     ] }, { api: "openai-completions" });
-    expect(payload.messages.map((message: any) => message.content)).toEqual(["base", "question", "late system", expect.stringContaining("This is a protocol requirement")]);
+    expect(payload.messages.map((message: any) => message.content)).toEqual(["base", "question", "late system", expect.stringContaining("When responding, return one valid JSON value")]);
   });
   it("preserves Anthropic system content in prompt fallback", async () => {
     const session: any = { agent: {} };
