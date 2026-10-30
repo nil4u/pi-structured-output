@@ -18,4 +18,9 @@ describe("results", () => {
     const mixed = message('报告已经生成。\n\n```json\n{"value":"from-json",}\n```');
     expect(parseResult(mixed, schema).value).toEqual({ value: "from-json" });
   });
+  it("reports the extracted JSON's validation error when prose follows a code fence", () => {
+    const limited = { type: "object", properties: { summary: { type: "string", maxLength: 5 } }, required: ["summary"], additionalProperties: false };
+    const fencedThenProse = message('```json\n{"summary":"too long"}\n```\n\nWhy:\n- **summary**: kept short');
+    expect(() => parseResult(fencedThenProse, limited)).toThrow(/\/summary must NOT have more than 5 characters/);
+  });
 });

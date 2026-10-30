@@ -13,27 +13,31 @@ export function parseResult<T>(message: ResultMessage, schema: JsonSchema): Stru
   if (message.stopReason === "toolUse" || hasToolCall(message)) throw new Error("Assistant turn requested a tool and is not a final structured output");
   if (message.stopReason === "aborted" || message.stopReason === "length" || message.stopReason === "incomplete") throw new Error(`Structured output did not finish: ${message.stopReason}`);
   const text = textFromMessage(message); if (text === undefined) throw new Error("Assistant turn did not contain final text");
+  // Strict parses run first so an error from cleanly extracted JSON is not masked by jsonrepair coercing surrounding prose.
+  const whole = text.trim(); const extracted = extractedCandidates(text);
   let firstValidationError: string | undefined;
-  for (const candidate of jsonCandidates(text)) {
-    const parsed = parseCandidate(candidate);
-    if (!parsed) continue;
-    const validation = validateValue(parsed.value, schema);
-    if (validation.valid) return { value: parsed.value as T, text: parsed.text, schema, model: message.model };
-    firstValidationError ??= formatValidationError(validation.errors);
+  for (const [candidates, parse] of [[[whole, ...extracted], parseStrict], [[...extracted, whole], parseRepaired]] as const) {
+    for (const candidate of new Set(candidates.filter(Boolean))) {
+      const parsed = parse(candidate);
+      if (!parsed) continue;
+      const validation = validateValue(parsed.value, schema);
+      if (validation.valid) return { value: parsed.value as T, text: parsed.text, schema, model: message.model };
+      firstValidationError ??= formatValidationError(validation.errors);
+    }
   }
   if (firstValidationError) throw new Error(`Structured output failed schema validation: ${firstValidationError}`);
   throw new Error("Assistant text is not valid JSON after repair");
 }
 
-function jsonCandidates(text: string): string[] {
-  const candidates = [text.trim()];
+function extractedCandidates(text: string): string[] {
+  const candidates: string[] = [];
   for (const match of text.matchAll(/```(?:json)?\s*([\s\S]*?)\s*```/gi)) candidates.push(match[1]!);
   for (let start = 0; start < text.length; start += 1) {
     if (text[start] !== "{" && text[start] !== "[") continue;
     const end = balancedJsonEnd(text, start);
     if (end !== -1) candidates.push(text.slice(start, end + 1));
   }
-  return [...new Set(candidates.filter(Boolean))];
+  return candidates;
 }
 
 function balancedJsonEnd(text: string, start: number): number {
@@ -48,8 +52,11 @@ function balancedJsonEnd(text: string, start: number): number {
   return -1;
 }
 
-function parseCandidate(candidate: string): { value: unknown; text: string } | undefined {
-  try { return { value: JSON.parse(candidate), text: candidate }; } catch { /* repair below */ }
+function parseStrict(candidate: string): { value: unknown; text: string } | undefined {
+  try { return { value: JSON.parse(candidate), text: candidate }; } catch { return undefined; }
+}
+
+function parseRepaired(candidate: string): { value: unknown; text: string } | undefined {
   try {
     const repaired = jsonrepair(candidate);
     return { value: JSON.parse(repaired), text: repaired };
